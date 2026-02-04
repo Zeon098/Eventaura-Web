@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Container, Typography, Box, CircularProgress, Alert, Card, Paper, Stack } from '@mui/material';
-import { useAuth } from '../../hooks/useAuth';
-import { subscribeToConsumerBookings, subscribeToProviderBookings, updateBookingStatus } from '../../services/firebase/booking.service';
-import type { BookingModel } from '../../types/booking.types';
-import { BookingStatus } from '../../utils/constants';
-import BookingCard from '../../components/common/BookingCard';
-import BookingStats from '../../components/bookings/BookingStats';
-import BookingTabs from '../../components/bookings/BookingTabs';
-import BookingDetailDialog from '../../components/bookings/BookingDetailDialog';
+import { useAuth } from '../../../hooks/useAuth';
+import { subscribeToConsumerBookings, subscribeToProviderBookings, updateBookingStatus } from '../../../services/firebase/booking.service';
+import type { BookingModel } from '../../../types/booking.types';
+import { BookingStatus } from '../../../utils/constants';
+import BookingCard from '../../../components/common/BookingCard';
+import BookingStats from '../../../components/bookings/BookingStats';
+import BookingTabs from '../../../components/bookings/BookingTabs';
+import BookingDetailDialog from '../../../components/bookings/BookingDetailDialog';
 
 interface TabPanelProps {
   children?: React.ReactNode;

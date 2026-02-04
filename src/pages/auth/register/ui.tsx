@@ -10,9 +10,9 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../../hooks/useAuth';
 import toast from 'react-hot-toast';
-import { getFirebaseErrorMessage } from '../../utils/errorHandlers';
+import { getFirebaseErrorMessage } from '../../../utils/errorHandlers';
 import { FirebaseError } from 'firebase/app';
 
 const RegisterPage: React.FC = () => {

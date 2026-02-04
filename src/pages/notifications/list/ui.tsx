@@ -13,14 +13,14 @@ import {
   Tab,
 } from '@mui/material';
 import { Notifications as NotificationsIcon, DoneAll as DoneAllIcon } from '@mui/icons-material';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../../hooks/useAuth';
 import {
   subscribeToNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
-} from '../../services/firebase/notification.service';
-import type { NotificationModel } from '../../types/notification.types';
-import NotificationItem from '../../components/notifications/NotificationItem';
+} from '../../../services/firebase/notification.service';
+import type { NotificationModel } from '../../../types/notification.types';
+import NotificationItem from '../../../components/notifications/NotificationItem';
 import toast from 'react-hot-toast';
 
 type TabValue = 'all' | 'unread';

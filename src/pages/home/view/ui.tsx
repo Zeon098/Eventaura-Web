@@ -13,10 +13,10 @@ import {
   Add as AddIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { getServices } from '../../services/firebase/service.service';
-import type { ServiceModel } from '../../types/service.types';
-import ServiceCard from '../../components/services/ServiceCard';
+import { useAuth } from '../../../hooks/useAuth';
+import { getServices } from '../../../services/firebase/service.service';
+import type { ServiceModel } from '../../../types/service.types';
+import ServiceCard from '../../../components/services/ServiceCard';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();

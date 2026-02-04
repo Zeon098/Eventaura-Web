@@ -17,13 +17,15 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
   PhotoCamera as CameraIcon,
+  
 } from '@mui/icons-material';
-import { useAuth } from '../../hooks/useAuth';
-import { updateDocument } from '../../services/firebase/firestore.service';
-import { cloudinaryService } from '../../services/cloudinary/upload.service';
-import { Collections } from '../../utils/constants';
-import { getInitials } from '../../utils/formatters';
+import { useAuth } from '../../../hooks/useAuth';
+import { updateDocument } from '../../../services/firebase/firestore.service';
+import { cloudinaryService } from '../../../services/cloudinary/upload.service';
+import { Collections } from '../../../utils/constants';
+import { getInitials } from '../../../utils/formatters';
 import toast from 'react-hot-toast';
+import AddressPickerField from '../../../components/location/AddressPickerField';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -202,13 +204,12 @@ export default function ProfilePage() {
               </Grid>
 
               <Grid size={{ xs: 12 }}>
-                <TextField
-                  fullWidth
+                <AddressPickerField
                   label="City"
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  onChange={(address) => setCity(address)}
                   disabled={!isEditing}
-                  placeholder="e.g., Lahore"
+                  helperText="Select your city"
                 />
               </Grid>
 

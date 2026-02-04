@@ -11,15 +11,16 @@ import {
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { useDebounce } from '../../hooks/useDebounce';
-import { algoliaService } from '../../services/algolia/search.service';
-import type {   ServiceSearchHit } from '../../types/service.types';
-import { Routes } from '../../utils/constants';
-import SearchBar from '../../components/services/SearchBar';
-import ServiceFilters from '../../components/services/ServiceFilters';
-import ServiceCard from '../../components/services/ServiceCard';
-import EmptyState from '../../components/services/EmptyState';
+
+import { useDebounce } from '../../../hooks/useDebounce';
+import { algoliaService } from '../../../services/algolia/search.service';
+import type {   ServiceSearchHit } from '../../../types/service.types';
+import { Routes } from '../../../utils/constants';
+import SearchBar from '../../../components/services/SearchBar';
+import ServiceFilters from '../../../components/services/ServiceFilters';
+import ServiceCard from '../../../components/services/ServiceCard';
+import EmptyState from '../../../components/services/EmptyState';
+import { useAuth } from '../../../hooks/useAuth';
 
 const ITEMS_PER_PAGE = 12;
 

@@ -1,0 +1,1 @@
+export { registerRoute } from './route';

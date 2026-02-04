@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type SetStateAction } from 'react';
 import { Box, CircularProgress, Alert } from '@mui/material';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../../hooks/useAuth';
 import { useParams, useNavigate } from 'react-router-dom';
-import { subscribeToChatRooms, getChatRoom, subscribeToMessages, sendMessage, markMessagesAsRead } from '../../services/firebase/chat.service';
-import type { ChatRoom, ChatMessage } from '../../types/chat.types';
-import { Routes } from '../../utils/constants';
+import { subscribeToChatRooms, getChatRoom, subscribeToMessages, sendMessage, markMessagesAsRead } from '../../../services/firebase/chat.service';
+import type { ChatRoom, ChatMessage } from '../../../types/chat.types';
+import { Routes } from '../../../utils/constants';
 import toast from 'react-hot-toast';
-import ChatSidebar from '../../components/chat/ChatSidebar';
-import ChatRoomView from '../../components/chat/ChatRoomView';
-import ChatSkeletonLoader from '../../components/chat/ChatSkeletonLoader';
-import ChatEmptyState from '../../components/chat/ChatEmptyState';
+import ChatSidebar from '../../../components/chat/ChatSidebar';
+import ChatRoomView from '../../../components/chat/ChatRoomView';
+import ChatSkeletonLoader from '../../../components/chat/ChatSkeletonLoader';
+import ChatEmptyState from '../../../components/chat/ChatEmptyState';
 
 export default function ChatListPage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -29,11 +29,11 @@ export default function ChatListPage() {
 
     const unsubscribe = subscribeToChatRooms(
       user.id,
-      (updatedRooms) => {
+      (updatedRooms: SetStateAction<(ChatRoom & { id: string; })[]> ) => {
         setRooms(updatedRooms);
         setLoading(false);
       },
-      (err) => {
+      (err: unknown) => {
         console.error('Error loading chat rooms:', err);
         setError('Failed to load conversations');
         setLoading(false);
@@ -75,13 +75,13 @@ export default function ChatListPage() {
 
     const unsubscribe = subscribeToMessages(
       roomId,
-      (updatedMessages) => {
+      (updatedMessages: SetStateAction<(ChatMessage & { id: string; })[]>) => {
         setMessages(updatedMessages);
         if (user?.id) {
           markMessagesAsRead(roomId, user.id);
         }
       },
-      (err) => {
+      (err: unknown) => {
         console.error('Error loading messages:', err);
       }
     );

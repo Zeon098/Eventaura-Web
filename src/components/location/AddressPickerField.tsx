@@ -12,6 +12,7 @@ interface AddressPickerFieldProps {
   required?: boolean;
   error?: boolean;
   helperText?: string;
+  disabled?: boolean;
 }
 
 export default function AddressPickerField({
@@ -22,6 +23,7 @@ export default function AddressPickerField({
   onChange,
   required = false,
   error = false,
+  disabled = false,
   helperText,
 }: AddressPickerFieldProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -40,6 +42,7 @@ export default function AddressPickerField({
         onClick={() => setDialogOpen(true)}
         required={required}
         error={error}
+        disabled={disabled}
         helperText={helperText}
         InputProps={{
           readOnly: true,
