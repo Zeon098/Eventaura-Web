@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Container,
   Typography,
@@ -14,81 +14,29 @@ import {
 } from '@mui/material';
 import { Notifications as NotificationsIcon, DoneAll as DoneAllIcon } from '@mui/icons-material';
 import { useAuth } from '../../../hooks/useAuth';
-import {
-  subscribeToNotifications,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-} from '../../../services/firebase/notification.service';
-import type { NotificationModel } from '../../../types/notification.types';
 import NotificationItem from '../../../components/notifications/NotificationItem';
-import toast from 'react-hot-toast';
+import {
+  useNotifications,
+  useFilteredNotifications,
+  useNotificationClick,
+  useMarkAllAsRead,
+} from './loader';
 
 type TabValue = 'all' | 'unread';
 
 export default function NotificationsPage() {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<(NotificationModel & { id: string })[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabValue>('all');
-  const [markingAllRead, setMarkingAllRead] = useState(false);
 
-  useEffect(() => {
-    if (!user?.id) return;
+  // Data fetching and actions from loader.ts
+  const { notifications, loading, error } = useNotifications(user?.id);
+  const { filteredNotifications, unreadCount } = useFilteredNotifications(notifications, tab);
+  const { handleClick: handleNotificationClick } = useNotificationClick();
+  const { markAllRead, markingAllRead } = useMarkAllAsRead();
 
-    setLoading(true);
-    const unsubscribe = subscribeToNotifications(
-      user.id,
-      (updatedNotifications) => {
-        setNotifications(updatedNotifications);
-        setLoading(false);
-      },
-      (err) => {
-        console.error('Error loading notifications:', err);
-        setError('Failed to load notifications');
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [user?.id]);
-
-  const handleNotificationClick = async (notification: NotificationModel & { id: string }) => {
-    if (!notification.read) {
-      try {
-        await markNotificationAsRead(notification.id);
-      } catch (error) {
-        console.error('Error marking notification as read:', error);
-      }
-    }
-    
-    // Navigate based on notification type/data if needed
-    if (notification.data?.bookingId) {
-      // Navigate to booking detail
-      // navigate(`/bookings/${notification.data.bookingId}`);
-    }
+  const handleMarkAllAsRead = () => {
+    if (user?.id) markAllRead(user.id);
   };
-
-  const handleMarkAllAsRead = async () => {
-    if (!user?.id) return;
-
-    try {
-      setMarkingAllRead(true);
-      await markAllNotificationsAsRead(user.id);
-      toast.success('All notifications marked as read');
-    } catch (error) {
-      console.error('Error marking all as read:', error);
-      toast.error('Failed to mark all as read');
-    } finally {
-      setMarkingAllRead(false);
-    }
-  };
-
-  const filteredNotifications = tab === 'unread'
-    ? notifications.filter(n => !n.read)
-    : notifications;
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   if (loading) {
     return (

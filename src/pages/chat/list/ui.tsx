@@ -1,93 +1,23 @@
-import { useState, useEffect, type SetStateAction } from 'react';
 import { Box, CircularProgress, Alert } from '@mui/material';
 import { useAuth } from '../../../hooks/useAuth';
 import { useParams, useNavigate } from 'react-router-dom';
-import { subscribeToChatRooms, getChatRoom, subscribeToMessages, sendMessage, markMessagesAsRead } from '../../../services/firebase/chat.service';
-import type { ChatRoom, ChatMessage } from '../../../types/chat.types';
 import { Routes } from '../../../utils/constants';
-import toast from 'react-hot-toast';
+import type { ChatRoom } from '../../../types/chat.types';
 import ChatSidebar from '../../../components/chat/ChatSidebar';
 import ChatRoomView from '../../../components/chat/ChatRoomView';
 import ChatSkeletonLoader from '../../../components/chat/ChatSkeletonLoader';
 import ChatEmptyState from '../../../components/chat/ChatEmptyState';
+import { useChatRooms, useChatRoomWithMessages, useSendMessage } from './loader';
 
 export default function ChatListPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const [rooms, setRooms] = useState<(ChatRoom & { id: string })[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<(ChatRoom & { id: string }) | null>(null);
-  const [messages, setMessages] = useState<(ChatMessage & { id: string })[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [roomLoading, setRoomLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Load chat rooms
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const unsubscribe = subscribeToChatRooms(
-      user.id,
-      (updatedRooms: SetStateAction<(ChatRoom & { id: string; })[]> ) => {
-        setRooms(updatedRooms);
-        setLoading(false);
-      },
-      (err: unknown) => {
-        console.error('Error loading chat rooms:', err);
-        setError('Failed to load conversations');
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [user?.id]);
-
-  // Load selected room and messages from URL param
-  useEffect(() =>  {
-    if (!roomId || !user?.id) {
-      setSelectedRoom(null);
-      setMessages([]);
-      setRoomLoading(false);
-      return;
-    }
-
-    setRoomLoading(true);
-    const loadRoom = async () => {
-      try {
-        const roomData = await getChatRoom(roomId);
-        if (!roomData) {
-          setError('Chat room not found');
-          setRoomLoading(false);
-          return;
-        }
-        setSelectedRoom(roomData);
-        await markMessagesAsRead(roomId, user.id);
-        setRoomLoading(false);
-      } catch (err) {
-        console.error('Error loading room:', err);
-        setError('Failed to load chat');
-        setRoomLoading(false);
-      }
-    };
-
-    loadRoom();
-
-    const unsubscribe = subscribeToMessages(
-      roomId,
-      (updatedMessages: SetStateAction<(ChatMessage & { id: string; })[]>) => {
-        setMessages(updatedMessages);
-        if (user?.id) {
-          markMessagesAsRead(roomId, user.id);
-        }
-      },
-      (err: unknown) => {
-        console.error('Error loading messages:', err);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [roomId, user?.id]);
+  // Use custom hooks from loader.ts for data fetching and real-time subscriptions
+  const { rooms, loading, error } = useChatRooms(user?.id);
+  const { selectedRoom, messages, roomLoading, error: roomError } = useChatRoomWithMessages(roomId, user?.id);
+  const sendMessageMutation = useSendMessage();
 
   const handleRoomSelect = (room: ChatRoom & { id: string }) => {
     navigate(`${Routes.CHAT}/${room.id}`);
@@ -96,20 +26,12 @@ export default function ChatListPage() {
   const handleSendMessage = async (text: string, imageUrl?: string) => {
     if (!user?.id || !roomId) return;
 
-    try {
-      await sendMessage(
-        { 
-          roomId, 
-          content: imageUrl || text, 
-          type: imageUrl ? 'image' : 'text'
-        },
-        user.id,
-      );
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message');
-      throw error;
-    }
+    await sendMessageMutation.mutateAsync({
+      roomId,
+      text,
+      imageUrl,
+      userId: user.id,
+    });
   };
 
   if (loading) {
@@ -123,7 +45,7 @@ export default function ChatListPage() {
   if (error && rooms.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error">{error || roomError}</Alert>
       </Box>
     );
   }

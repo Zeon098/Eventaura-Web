@@ -1,13 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { Container, Typography, Box, CircularProgress, Alert, Card, Paper, Stack } from '@mui/material';
 import { useAuth } from '../../../hooks/useAuth';
-import { subscribeToConsumerBookings, subscribeToProviderBookings, updateBookingStatus } from '../../../services/firebase/booking.service';
 import type { BookingModel } from '../../../types/booking.types';
-import { BookingStatus } from '../../../utils/constants';
 import BookingCard from '../../../components/common/BookingCard';
 import BookingStats from '../../../components/bookings/BookingStats';
 import BookingTabs from '../../../components/bookings/BookingTabs';
 import BookingDetailDialog from '../../../components/bookings/BookingDetailDialog';
+import { useBookings, useFilteredBookings, useBookingStats, useUpdateBookingStatus } from './loader';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -26,36 +25,14 @@ function TabPanel({ children, value, index }: TabPanelProps) {
 export default function BookingsListPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
-  const [allBookings, setAllBookings] = useState<(BookingModel & { isIncoming: boolean })[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<(BookingModel & { isIncoming: boolean }) | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
-  const getStatusFilter = (tab: number): string[] => {
-    switch (tab) {
-      case 0: return [BookingStatus.PENDING];
-      case 1: return [BookingStatus.ACCEPTED];
-      case 2: return [BookingStatus.REJECTED, BookingStatus.COMPLETED, BookingStatus.CANCELLED];
-      default: return [];
-    }
-  };
-
-  // Filter bookings based on active tab
-  const bookings = useMemo(() => {
-    const statusFilter = getStatusFilter(activeTab);
-    return allBookings.filter(booking => statusFilter.includes(booking.status));
-  }, [allBookings, activeTab]);
-
-  // Calculate statistics from all bookings
-  const stats = useMemo(() => {
-    const pending = allBookings.filter(b => b.status === BookingStatus.PENDING).length;
-    const upcoming = allBookings.filter(b => b.status === BookingStatus.ACCEPTED).length;
-    const completed = allBookings.filter(b => b.status === BookingStatus.COMPLETED).length;
-    const history = allBookings.length - pending - upcoming;
-    const total = allBookings.length;
-    return { pending, upcoming, completed, history, total };
-  }, [allBookings]);
+  // Data fetching and derived state from loader.ts
+  const { allBookings, loading, error } = useBookings(user?.id);
+  const bookings = useFilteredBookings(allBookings, activeTab);
+  const stats = useBookingStats(allBookings);
+  const { updateStatus } = useUpdateBookingStatus();
 
   const handleViewDetails = (booking: BookingModel & { isIncoming: boolean }) => {
     setSelectedBooking(booking);
@@ -67,79 +44,13 @@ export default function BookingsListPage() {
     setSelectedBooking(null);
   };
 
-  useEffect(() => {
-    if (!user?.id) return;
-    
-
-    setLoading(true); 
-    setError(null);
-
-    let combinedBookings: (BookingModel & { isIncoming: boolean })[] = [];
-    let consumerLoaded = false;
-    let providerLoaded = false;
-    
-    const updateBookings = () => {
-      if (consumerLoaded && providerLoaded) {
-        // Sort by creation date (newest first)
-        combinedBookings.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        console.log(`Loaded ${combinedBookings.length} total bookings (incoming + outgoing):`, combinedBookings);
-        setAllBookings(combinedBookings);
-        setLoading(false);
-      }
-    };
-    
-    // Subscribe to consumer bookings (outgoing - bookings this user made)
-    const unsubscribeConsumer = subscribeToConsumerBookings(
-      user.id,
-      null, // Get all statuses
-      (bookingsData) => {
-        const outgoingBookings = bookingsData.map(b => ({ ...b, isIncoming: false }));
-        combinedBookings = combinedBookings.filter(b => b.isIncoming).concat(outgoingBookings);
-        consumerLoaded = true;
-        updateBookings();
-      },
-      (err) => {
-        console.error('Error loading consumer bookings:', err);
-        consumerLoaded = true;
-        updateBookings();
-      }
-    );
-
-    // Subscribe to provider bookings (incoming - bookings from customers)
-    const unsubscribeProvider = subscribeToProviderBookings(
-      user.id,
-      null, // Get all statuses
-      (bookingsData) => {
-        const incomingBookings = bookingsData.map(b => ({ ...b, isIncoming: true }));
-        combinedBookings = combinedBookings.filter(b => !b.isIncoming).concat(incomingBookings);
-        providerLoaded = true;
-        updateBookings();
-      },
-      (err) => {
-        console.error('Error loading provider bookings:', err);
-        providerLoaded = true;
-        updateBookings();
-      }
-    );
-
-    return () => {
-      unsubscribeConsumer();
-      unsubscribeProvider();
-    };
-  }, [user?.id]);
-
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
 
   const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
-    try {
-      await updateBookingStatus(bookingId, newStatus);
-      handleCloseDialog();
-    } catch (error) {
-      console.error('Error updating booking status:', error);
-      alert('Failed to update booking status');
-    }
+    await updateStatus(bookingId, newStatus);
+    handleCloseDialog();
   };
 
   return (

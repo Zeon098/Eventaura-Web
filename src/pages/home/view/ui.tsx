@@ -1,53 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
-  Container, 
-  Typography, 
-  Button, 
-  Box,
-  Grid,
-  CircularProgress,
-  Alert,
-  Fab,
+  Container,Typography, Button, Box,Grid,CircularProgress,Alert,Fab,
 } from '@mui/material';
 import { 
   Add as AddIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
-import { getServices } from '../../../services/firebase/service.service';
-import type { ServiceModel } from '../../../types/service.types';
 import ServiceCard from '../../../components/services/ServiceCard';
+import { useUserServices } from './loader';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [services, setServices] = useState<ServiceModel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadUserServices = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const userServices = await getServices({ providerId: user!.id });
-      console.log('Loaded user services:', userServices);
-      setServices(userServices);
-    } catch (err) {
-      console.error('Error loading user services:', err);
-      setError('Failed to load your services');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.id && user?.role === 'provider') {
-      loadUserServices();
-    } else {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  
+  // Use React Query hook from loader.ts for data fetching
+  const { data: services = [], isLoading: loading, error } = useUserServices(user?.id, user?.role);
 
   const handleCreateService = () => {
     navigate('/services/form');
@@ -96,7 +64,7 @@ const HomePage: React.FC = () => {
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
+          {error.message || 'Failed to load your services'}
         </Alert>
       )}
 

@@ -46,7 +46,9 @@ export default function AddressPickerField({
         helperText={helperText}
         InputProps={{
           readOnly: true,
-          endAdornment: (
+          endAdornment:
+          disabled ? null :
+           (
             <InputAdornment position="end">
               <IconButton onClick={() => setDialogOpen(true)} edge="end">
                 <MapIcon />
