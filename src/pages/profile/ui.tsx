@@ -9,9 +9,9 @@ import {
   Alert,
 } from '@mui/material';
 import { useProfileForm, usePhotoUpload, useSaveProfile } from './loader';
-import ProfileAvatar from '../../../components/profile/ProfileAvatar';
-import ProfileFormFields from '../../../components/profile/ProfileFormFields';
-import ProfileActions from '../../../components/profile/ProfileActions';
+import ProfileAvatar from '../../components/profile/ProfileAvatar';
+import ProfileFormFields from '../../components/profile/ProfileFormFields';
+import ProfileActions from '../../components/profile/ProfileActions';
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);

@@ -6,8 +6,8 @@ import {
   Add as AddIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../hooks/useAuth';
-import ServiceCard from '../../../components/services/ServiceCard';
+import { useAuth } from '../../hooks/useAuth';
+import ServiceCard from '../../components/services/ServiceCard';
 import { useUserServices } from './loader';
 
 const HomePage: React.FC = () => {

@@ -13,8 +13,8 @@ import {
   Tab,
 } from '@mui/material';
 import { Notifications as NotificationsIcon, DoneAll as DoneAllIcon } from '@mui/icons-material';
-import { useAuth } from '../../../hooks/useAuth';
-import NotificationItem from '../../../components/notifications/NotificationItem';
+import { useAuth } from '../../hooks/useAuth';
+import NotificationItem from '../../components/notifications/NotificationItem';
 import {
   useNotifications,
   useFilteredNotifications,

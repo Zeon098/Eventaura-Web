@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../../hooks/useAuth';
-import { updateDocument } from '../../../services/firebase/firestore.service';
-import { cloudinaryService } from '../../../services/cloudinary/upload.service';
-import { Collections } from '../../../utils/constants';
+import { useAuth } from '../../hooks/useAuth';
+import { updateDocument } from '../../services/firebase/firestore.service';
+import { cloudinaryService } from '../../services/cloudinary/upload.service';
+import { Collections } from '../../utils/constants';
 import toast from 'react-hot-toast';
 
 /**

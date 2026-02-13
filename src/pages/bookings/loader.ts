@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { subscribeToConsumerBookings, subscribeToProviderBookings, updateBookingStatus } from '../../../services/firebase/booking.service';
-import type { BookingModel } from '../../../types/booking.types';
-import { BookingStatus } from '../../../utils/constants';
+import { subscribeToConsumerBookings, subscribeToProviderBookings, updateBookingStatus } from '../../services/firebase/booking.service';
+import type { BookingModel } from '../../types/booking.types';
+import { BookingStatus } from '../../utils/constants';
 
 /**
  * Custom hook for subscribing to user's bookings (both incoming and outgoing) in real-time

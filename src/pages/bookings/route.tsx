@@ -1,5 +1,5 @@
 import type { RouteObject } from 'react-router-dom';
-import { pathKeys } from '../../../config/pathKeys';
+import { pathKeys } from '../../config/pathKeys';
 
 export const bookingsListRoute: RouteObject = {
   path: pathKeys.bookings,

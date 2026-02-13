@@ -6,8 +6,8 @@ import {
   subscribeToMessages, 
   sendMessage, 
   markMessagesAsRead 
-} from '../../../services/firebase/chat.service';
-import type { ChatRoom, ChatMessage } from '../../../types/chat.types';
+} from '../../services/firebase/chat.service';
+import type { ChatRoom, ChatMessage } from '../../types/chat.types';
 import toast from 'react-hot-toast';
 
 /**

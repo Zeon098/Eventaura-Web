@@ -1,12 +1,12 @@
 import { Box, CircularProgress, Alert } from '@mui/material';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Routes } from '../../../utils/constants';
-import type { ChatRoom } from '../../../types/chat.types';
-import ChatSidebar from '../../../components/chat/ChatSidebar';
-import ChatRoomView from '../../../components/chat/ChatRoomView';
-import ChatSkeletonLoader from '../../../components/chat/ChatSkeletonLoader';
-import ChatEmptyState from '../../../components/chat/ChatEmptyState';
+import { Routes } from '../../utils/constants';
+import type { ChatRoom } from '../../types/chat.types';
+import ChatSidebar from '../../components/chat/ChatSidebar';
+import ChatRoomView from '../../components/chat/ChatRoomView';
+import ChatSkeletonLoader from '../../components/chat/ChatSkeletonLoader';
+import ChatEmptyState from '../../components/chat/ChatEmptyState';
 import { useChatRooms, useChatRoomWithMessages, useSendMessage } from './loader';
 
 export default function ChatListPage() {

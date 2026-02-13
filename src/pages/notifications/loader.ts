@@ -3,8 +3,8 @@ import {
   subscribeToNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
-} from '../../../services/firebase/notification.service';
-import type { NotificationModel } from '../../../types/notification.types';
+} from '../../services/firebase/notification.service';
+import type { NotificationModel } from '../../types/notification.types';
 import toast from 'react-hot-toast';
 
 type TabValue = 'all' | 'unread';

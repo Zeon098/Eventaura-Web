@@ -1,5 +1,5 @@
 import type { RouteObject } from 'react-router-dom';
-import { pathKeys } from '../../../config/pathKeys';
+import { pathKeys } from '../../config/pathKeys';
 
 /**
  * Home page route configuration
