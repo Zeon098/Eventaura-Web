@@ -1,9 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
+import userReducer from './slices/userSlice';
 
 // Create the Redux store
 export const store = configureStore({
   reducer: {
-    // Add your reducers here as you create them
+    user: userReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

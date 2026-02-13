@@ -8,6 +8,8 @@ import type { AppUser } from '../types/user.types';
 import { getDocument, updateDocument } from '../services/firebase/firestore.service';
 import { Collections } from '../utils/constants';
 import { logError } from '../utils/errorHandlers';
+import { store } from '../store/store';
+import { setUser as setReduxUser, updateUser as updateReduxUser, clearUser as clearReduxUser, setUserLoading } from '../store/slices/userSlice';
 
 interface AuthContextType {
   user: AppUser | null;
@@ -57,6 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (userData) {
           console.log('✅ User data loaded from Firestore');
           setUser(userData);
+          store.dispatch(setReduxUser(userData));
         } else {
           // Create default user if not found
           console.log('⚠️ User not found in Firestore, creating default user');
@@ -70,12 +73,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             role: 'user',
           };
           setUser(newUser);
+          store.dispatch(setReduxUser(newUser));
         }
       } else {
         console.log('👤 No user logged in');
         setUser(null);
+        store.dispatch(clearReduxUser());
       }
       setLoading(false);
+      store.dispatch(setUserLoading(false));
     });
 
     return () => {
@@ -87,8 +93,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      store.dispatch(setUserLoading(true));
       const userData = await authService.signIn(email, password);
       setUser(userData);
+      store.dispatch(setReduxUser(userData));
     } catch (error) {
       logError(error, 'signIn');
       throw error;
@@ -100,8 +108,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (email: string, password: string, displayName: string) => {
     try {
       setLoading(true);
+      store.dispatch(setUserLoading(true));
       const userData = await authService.signUp(email, password, displayName);
       setUser(userData);
+      store.dispatch(setReduxUser(userData));
     } catch (error) {
       logError(error, 'signUp');
       throw error;
@@ -115,6 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await authService.signOut();
       setUser(null);
       setFirebaseUser(null);
+      store.dispatch(clearReduxUser());
     } catch (error) {
       logError(error, 'signOut');
       throw error;
@@ -129,6 +140,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Update local state
       setUser({ ...user, ...updates });
+      store.dispatch(updateReduxUser(updates));
     } catch (error) {
       logError(error, 'updateUser');
       throw error;
@@ -142,6 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userData = await fetchUserData(firebaseUser.uid);
       if (userData) {
         setUser(userData);
+        store.dispatch(setReduxUser(userData));
       }
     } catch (error) {
       logError(error, 'refreshUser');
