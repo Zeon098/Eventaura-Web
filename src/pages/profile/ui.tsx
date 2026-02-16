@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Container,
   Typography,
@@ -7,41 +6,36 @@ import {
   CardContent,
   Grid,
   Alert,
+  CircularProgress,
 } from '@mui/material';
-import { useProfileForm, usePhotoUpload, useSaveProfile } from './loader';
+import { useProfile } from './loader';
 import ProfileAvatar from '../../components/profile/ProfileAvatar';
 import ProfileFormFields from '../../components/profile/ProfileFormFields';
 import ProfileActions from '../../components/profile/ProfileActions';
 
 export default function ProfilePage() {
-  const [isEditing, setIsEditing] = useState(false);
-
-  // Data & actions from loader.ts
   const {
-    user, updateUser,
-    displayName, setDisplayName,
-    email,
-    photoUrl, setPhotoUrl,
-    city, setCity,
-    resetForm,
-  } = useProfileForm();
-  const { uploading, handlePhotoUpload } = usePhotoUpload(setPhotoUrl);
-  const { saving, saveProfile } = useSaveProfile();
+    user, isLoading, error, isEditing,
+    displayName, email, photoUrl, city,
+    startEditing, stopEditing, setField, handlePhotoUpload, handleSave,
+    uploading, saving,
+  } = useProfile();
 
-  const handleSave = async () => {
-    if (!user?.id) return;
-    const success = await saveProfile(
-      user.id,
-      { displayName: displayName.trim(), photoUrl, city: city.trim() },
-      updateUser,
+  if (isLoading) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Container>
     );
-    if (success) setIsEditing(false);
-  };
+  }
 
-  const handleCancel = () => {
-    resetForm();
-    setIsEditing(false);
-  };
+  if (error) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Alert severity="error">Failed to load profile: {error.message}</Alert>
+      </Container>
+    );
+  }
 
   if (!user) {
     return (
@@ -83,8 +77,8 @@ export default function ProfilePage() {
                 email={email}
                 city={city}
                 isEditing={isEditing}
-                onDisplayNameChange={setDisplayName}
-                onCityChange={setCity}
+                onDisplayNameChange={(v) => setField('displayName', v)}
+                onCityChange={(v) => setField('city', v)}
               />
 
               {/* Action Buttons */}
@@ -93,9 +87,9 @@ export default function ProfilePage() {
                   isEditing={isEditing}
                   saving={saving}
                   uploading={uploading}
-                  onEdit={() => setIsEditing(true)}
+                  onEdit={startEditing}
                   onSave={handleSave}
-                  onCancel={handleCancel}
+                  onCancel={stopEditing}
                 />
               </Grid>
             </Grid>
