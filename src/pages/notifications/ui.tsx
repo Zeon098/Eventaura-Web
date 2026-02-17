@@ -1,26 +1,9 @@
-import { useState } from 'react';
-import {
-  Container,
-  Typography,
-  Box,
-  List,
-  CircularProgress,
-  Alert,
-  Paper,
-  Divider,
-  Button,
-  Tabs,
-  Tab,
-} from '@mui/material';
+import {Container,Typography,Box,List,CircularProgress,Alert,Paper,Divider,Button,Tabs,Tab,} from '@mui/material';
+import {useNotifications,useFilteredNotifications,useNotificationClick,useMarkAllAsRead,} from './loader';
 import { Notifications as NotificationsIcon, DoneAll as DoneAllIcon } from '@mui/icons-material';
-import { useAuth } from '../../hooks/useAuth';
 import NotificationItem from '../../components/notifications/NotificationItem';
-import {
-  useNotifications,
-  useFilteredNotifications,
-  useNotificationClick,
-  useMarkAllAsRead,
-} from './loader';
+import { useAuth } from '../../hooks/useAuth';
+import { useState } from 'react';
 
 type TabValue = 'all' | 'unread';
 

@@ -1,4 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useFirebaseSubscription } from '../../hooks/useFirebaseSubscription';
 import {
   subscribeToNotifications,
   markNotificationAsRead,
@@ -8,92 +10,54 @@ import type { NotificationModel } from '../../types/notification.types';
 import toast from 'react-hot-toast';
 
 type TabValue = 'all' | 'unread';
+type TaggedNotification = NotificationModel & { id: string };
 
-/**
- * Custom hook for subscribing to user's notifications in real-time
- */
+/* ── Real-time subscription → React Query cache ─────── */
+
 export const useNotifications = (userId: string | undefined) => {
-  const [notifications, setNotifications] = useState<(NotificationModel & { id: string })[]>([]);
-  const [loading, setLoading] = useState(!!userId);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = useFirebaseSubscription<TaggedNotification[]>(
+    ['notifications', userId],
+    (onData, onError) => subscribeToNotifications(userId!, onData, onError),
+    { enabled: !!userId, fallback: [] },
+  );
 
-  useEffect(() => {
-    if (!userId) return;
-
-    const unsubscribe = subscribeToNotifications(
-      userId,
-      (updatedNotifications) => {
-        setNotifications(updatedNotifications);
-        setLoading(false);
-      },
-      (err) => {
-        console.error('Error loading notifications:', err);
-        setError('Failed to load notifications');
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [userId]);
-
-  return { notifications, loading, error };
+  return { notifications: data ?? [], loading, error };
 };
 
-/**
- * Derives filtered notifications and unread count based on active tab
- */
-export const useFilteredNotifications = (
-  notifications: (NotificationModel & { id: string })[],
-  tab: TabValue
-) => {
+/* ── Derived state ──────────────────────────────────── */
+
+export const useFilteredNotifications = (notifications: TaggedNotification[], tab: TabValue) => {
   const filteredNotifications = useMemo(
     () => (tab === 'unread' ? notifications.filter(n => !n.read) : notifications),
-    [notifications, tab]
+    [notifications, tab],
   );
-
-  const unreadCount = useMemo(
-    () => notifications.filter(n => !n.read).length,
-    [notifications]
-  );
-
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
   return { filteredNotifications, unreadCount };
 };
 
-/**
- * Custom hook for handling notification click (mark as read)
- */
+/* ── Mutations ──────────────────────────────────────── */
+
 export const useNotificationClick = () => {
-  const handleClick = useCallback(async (notification: NotificationModel & { id: string }) => {
-    if (!notification.read) {
-      try {
-        await markNotificationAsRead(notification.id);
-      } catch (error) {
-        console.error('Error marking notification as read:', error);
-      }
-    }
-  }, []);
+  const mutation = useMutation({
+    mutationFn: (id: string) => markNotificationAsRead(id),
+  });
+
+  const handleClick = (notification: TaggedNotification) => {
+    if (!notification.read) mutation.mutate(notification.id);
+  };
 
   return { handleClick };
 };
 
-/**
- * Custom hook for marking all notifications as read
- */
 export const useMarkAllAsRead = () => {
-  const [markingAllRead, setMarkingAllRead] = useState(false);
+  const mutation = useMutation({
+    mutationFn: (userId: string) => markAllNotificationsAsRead(userId),
+    onSuccess: () => toast.success('All notifications marked as read'),
+    onError: () => toast.error('Failed to mark all as read'),
+  });
 
-  const markAllRead = useCallback(async (userId: string) => {
-    setMarkingAllRead(true);
-    try {
-      await markAllNotificationsAsRead(userId);
-      toast.success('All notifications marked as read');
-    } catch (error) {
-      console.error('Error marking all as read:', error);
-      toast.error('Failed to mark all as read');
-    } finally {
-      setMarkingAllRead(false);
-    }
-  }, []);
-
-  return { markAllRead, markingAllRead };
+  return {
+    markAllRead: (userId: string) => mutation.mutate(userId),
+    markingAllRead: mutation.isPending,
+  };
 };

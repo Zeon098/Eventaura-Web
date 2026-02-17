@@ -1,19 +1,10 @@
-import React, { useState } from 'react';
-import {
-  Container,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Box,
-  Link,
-  CircularProgress,
-} from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../hooks/useAuth';
-import toast from 'react-hot-toast';
+import {Container,Paper,TextField,Button,Typography,Box,Link,CircularProgress,} from '@mui/material';
 import { getFirebaseErrorMessage } from '../../../utils/errorHandlers';
+import { useAuth } from '../../../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { FirebaseError } from 'firebase/app';
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();

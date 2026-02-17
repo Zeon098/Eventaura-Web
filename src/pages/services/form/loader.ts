@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../hooks/useAuth';
 import { getDocument, updateDocument, addDocument } from '../../../services/firebase/firestore.service';
 import { cloudinaryService } from '../../../services/cloudinary/upload.service';
@@ -14,17 +15,13 @@ export interface CategoryFormData {
   pricingType: 'base' | 'per_head' | 'per_100_persons';
 }
 
-/**
- * Hook that manages all form field state and loads existing data in edit mode.
- */
+/* ── Form hook ──────────────────────────────────────── */
+
 export function useServiceForm(serviceId: string | undefined) {
   const { user } = useAuth();
   const isEditMode = Boolean(serviceId);
 
-  const [loading, setLoading] = useState(isEditMode);
-  const [error, setError] = useState<string | null>(null);
-
-  // Form fields
+  // Form fields (local state — these are UI draft, not server state)
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [city, setCity] = useState('');
@@ -35,62 +32,46 @@ export function useServiceForm(serviceId: string | undefined) {
   const [categories, setCategories] = useState<CategoryFormData[]>([
     { name: '', price: 0, pricingType: 'base' },
   ]);
+  const [hydrated, setHydrated] = useState(!isEditMode);
 
-  useEffect(() => {
-    if (!isEditMode || !serviceId) return;
-
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        setLoading(true);
-        const serviceData = await getDocument<ServiceModel>(Collections.SERVICES, serviceId);
-
-        if (cancelled) return;
-
-        if (!serviceData) {
-          setError('Service not found');
-          return;
-        }
-
-        if (serviceData.providerId !== user?.id) {
-          setError('You do not have permission to edit this service');
-          return;
-        }
-
-        setName(serviceData.title);
-        setDescription(serviceData.description);
-        setCity(serviceData.location || '');
-        setAddress(serviceData.location || '');
-        setLatitude(serviceData.latitude);
-        setLongitude(serviceData.longitude);
-        setImages(serviceData.galleryImages || []);
+  // Fetch existing service in edit mode and hydrate form once
+  const { isLoading, error } = useQuery({
+    queryKey: ['service', serviceId],
+    queryFn: async () => {
+      const data = await getDocument<ServiceModel>(Collections.SERVICES, serviceId!);
+      if (!data) throw new Error('Service not found');
+      if (data.providerId !== user?.id) throw new Error('You do not have permission to edit this service');
+      return data;
+    },
+    enabled: isEditMode && !!serviceId && !hydrated,
+    staleTime: 5 * 60_000,
+    select(data) {
+      // Hydrate form fields once after fetch
+      if (!hydrated) {
+        setName(data.title);
+        setDescription(data.description);
+        setCity(data.location || '');
+        setAddress(data.location || '');
+        setLatitude(data.latitude);
+        setLongitude(data.longitude);
+        setImages(data.galleryImages || []);
         setCategories(
-          serviceData.categories.map((cat) => ({
+          data.categories.map((cat) => ({
             name: cat.name,
             price: cat.price,
             pricingType: cat.pricingType || 'base',
           })),
         );
-      } catch (err) {
-        if (!cancelled) {
-          console.error('Error loading service:', err);
-          setError('Failed to load service');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+        setHydrated(true);
       }
-    };
-
-    load();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serviceId, isEditMode]);
+      return data;
+    },
+  });
 
   return {
     isEditMode,
-    loading,
-    error,
+    loading: isEditMode && !hydrated && isLoading,
+    error: error?.message ?? null,
     name, setName,
     description, setDescription,
     city, setCity,
@@ -102,42 +83,35 @@ export function useServiceForm(serviceId: string | undefined) {
   };
 }
 
-/**
- * Hook for uploading images to Cloudinary.
- */
+/* ── Image upload hook ──────────────────────────────── */
+
 export function useImageUpload(
   setImages: React.Dispatch<React.SetStateAction<string[]>>,
 ) {
-  const [uploadingImages, setUploadingImages] = useState(false);
+  const uploadMutation = useMutation({
+    mutationFn: (files: File[]) => cloudinaryService.uploadImages(files),
+    onSuccess: (urls) => {
+      setImages((prev) => [...prev, ...urls]);
+      toast.success(`${urls.length} image(s) uploaded successfully`);
+    },
+    onError: () => toast.error('Failed to upload images'),
+  });
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-
-    try {
-      setUploadingImages(true);
-      const fileArray = Array.from(files);
-      const uploadedUrls = await cloudinaryService.uploadImages(fileArray);
-      setImages((prev) => [...prev, ...uploadedUrls]);
-      toast.success(`${uploadedUrls.length} image(s) uploaded successfully`);
-    } catch (err) {
-      console.error('Error uploading images:', err);
-      toast.error('Failed to upload images');
-    } finally {
-      setUploadingImages(false);
-    }
+    uploadMutation.mutate(Array.from(files));
   };
 
   const handleRemoveImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  return { uploadingImages, handleImageUpload, handleRemoveImage };
+  return { uploadingImages: uploadMutation.isPending, handleImageUpload, handleRemoveImage };
 }
 
-/**
- * Hook for managing the categories list.
- */
+/* ── Category manager hook (pure local state — no conversion needed) ── */
+
 export function useCategoryManager(
   categories: CategoryFormData[],
   setCategories: React.Dispatch<React.SetStateAction<CategoryFormData[]>>,
@@ -167,9 +141,8 @@ export function useCategoryManager(
   return { handleAddCategory, handleRemoveCategory, handleCategoryChange };
 }
 
-/**
- * Hook for form validation and submission.
- */
+/* ── Submit hook ────────────────────────────────────── */
+
 export function useServiceSubmit(formState: {
   isEditMode: boolean;
   serviceId: string | undefined;
@@ -183,42 +156,11 @@ export function useServiceSubmit(formState: {
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
 
-  const validateForm = (): boolean => {
-    if (!formState.name.trim()) {
-      toast.error('Service name is required');
-      return false;
-    }
-    if (!formState.description.trim()) {
-      toast.error('Description is required');
-      return false;
-    }
-    if (!formState.city.trim()) {
-      toast.error('City is required');
-      return false;
-    }
-    if (formState.categories.some((cat) => !cat.name.trim())) {
-      toast.error('All categories must have a name');
-      return false;
-    }
-    if (formState.categories.some((cat) => cat.price <= 0)) {
-      toast.error('All categories must have a valid price');
-      return false;
-    }
-    return true;
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!validateForm()) return;
-    if (!user?.id) {
-      toast.error('You must be logged in to create a service');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error('You must be logged in');
 
       const serviceData: Omit<ServiceModel, 'id'> = {
         title: formState.name.trim(),
@@ -239,31 +181,42 @@ export function useServiceSubmit(formState: {
         venueSubtypes: [],
       };
 
-      let serviceId: string;
-
+      let id: string;
       if (formState.isEditMode && formState.serviceId) {
         await updateDocument(Collections.SERVICES, formState.serviceId, serviceData);
-        serviceId = formState.serviceId;
-        toast.success('Service updated successfully');
+        id = formState.serviceId;
       } else {
-        serviceId = await addDocument(Collections.SERVICES, serviceData);
-        toast.success('Service created successfully');
+        id = await addDocument(Collections.SERVICES, serviceData);
       }
 
-      try {
-        await algoliaService.indexService({ ...serviceData, id: serviceId } as ServiceModel);
-      } catch (algoliaErr) {
-        console.error('Failed to index in Algolia:', algoliaErr);
-      }
+      // Index in Algolia (best-effort)
+      try { await algoliaService.indexService({ ...serviceData, id } as ServiceModel); } catch { /* skip */ }
 
-      navigate(`${Routes.SERVICES}/${serviceId}`);
-    } catch (err) {
-      console.error('Error saving service:', err);
-      toast.error('Failed to save service');
-    } finally {
-      setSubmitting(false);
-    }
+      return id;
+    },
+    onSuccess: (id) => {
+      toast.success(formState.isEditMode ? 'Service updated successfully' : 'Service created successfully');
+      queryClient.invalidateQueries({ queryKey: ['service', id] });
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+      navigate(`${Routes.SERVICES}/${id}`);
+    },
+    onError: () => toast.error('Failed to save service'),
+  });
+
+  const validateForm = (): boolean => {
+    if (!formState.name.trim()) { toast.error('Service name is required'); return false; }
+    if (!formState.description.trim()) { toast.error('Description is required'); return false; }
+    if (!formState.city.trim()) { toast.error('City is required'); return false; }
+    if (formState.categories.some((c) => !c.name.trim())) { toast.error('All categories must have a name'); return false; }
+    if (formState.categories.some((c) => c.price <= 0)) { toast.error('All categories must have a valid price'); return false; }
+    return true;
   };
 
-  return { submitting, handleSubmit };
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!validateForm()) return;
+    submitMutation.mutate();
+  };
+
+  return { submitting: submitMutation.isPending, handleSubmit };
 }

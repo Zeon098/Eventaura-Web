@@ -1,8 +1,3 @@
-/**
- * Route utilities
- * Helper functions for route generation
- */
-
 import { ROUTES } from './routes';
 
 /**

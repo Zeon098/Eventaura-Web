@@ -1,14 +1,10 @@
-import React from 'react';
-import { 
-  Container,Typography, Button, Box,Grid,CircularProgress,Alert,Fab,
-} from '@mui/material';
-import { 
-  Add as AddIcon,
-} from '@mui/icons-material';
+import { Container,Typography, Button, Box,Grid,CircularProgress,Alert,Fab,} from '@mui/material';
+import ServiceCard from '../../components/services/ServiceCard';
+import { Add as AddIcon,} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import ServiceCard from '../../components/services/ServiceCard';
 import { useUserServices } from './loader';
+import React from 'react';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();

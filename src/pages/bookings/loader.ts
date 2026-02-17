@@ -1,85 +1,54 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useFirebaseSubscription } from '../../hooks/useFirebaseSubscription';
 import { subscribeToConsumerBookings, subscribeToProviderBookings, updateBookingStatus } from '../../services/firebase/booking.service';
 import type { BookingModel } from '../../types/booking.types';
 import { BookingStatus } from '../../utils/constants';
+import toast from 'react-hot-toast';
 
-/**
- * Custom hook for subscribing to user's bookings (both incoming and outgoing) in real-time
- * Combines consumer and provider bookings into a single sorted list
- */
+type TaggedBooking = BookingModel & { isIncoming: boolean };
+
+/* ── Real-time subscription → React Query cache ─────── */
+
 export const useBookings = (userId: string | undefined) => {
-  const [allBookings, setAllBookings] = useState<(BookingModel & { isIncoming: boolean })[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Bookings merges TWO subscriptions, so we wrap the merge logic
+  // inside a single subscribeFn passed to useFirebaseSubscription.
+  const { data, loading, error } = useFirebaseSubscription<TaggedBooking[]>(
+    ['bookings', userId],
+    (onData) => {
+      let consumer: TaggedBooking[] = [];
+      let provider: TaggedBooking[] = [];
+      let consumerReady = false;
+      let providerReady = false;
 
-  useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
+      const merge = () => {
+        if (!consumerReady || !providerReady) return;
+        const combined = [...consumer, ...provider].sort(
+          (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+        );
+        onData(combined);
+      };
 
-    setLoading(true);
-    setError(null);
+      const unSubConsumer = subscribeToConsumerBookings(userId!, null,
+        (d) => { consumer = d.map(b => ({ ...b, isIncoming: false })); consumerReady = true; merge(); },
+        () => { consumerReady = true; merge(); },
+      );
 
-    let combinedBookings: (BookingModel & { isIncoming: boolean })[] = [];
-    let consumerLoaded = false;
-    let providerLoaded = false;
+      const unSubProvider = subscribeToProviderBookings(userId!, null,
+        (d) => { provider = d.map(b => ({ ...b, isIncoming: true })); providerReady = true; merge(); },
+        () => { providerReady = true; merge(); },
+      );
 
-    const updateCombined = () => {
-      if (consumerLoaded && providerLoaded) {
-        combinedBookings.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        console.log(`Loaded ${combinedBookings.length} total bookings (incoming + outgoing):`, combinedBookings);
-        setAllBookings(combinedBookings);
-        setLoading(false);
-      }
-    };
+      return () => { unSubConsumer(); unSubProvider(); };
+    },
+    { enabled: !!userId, fallback: [] },
+  );
 
-    // Subscribe to consumer bookings (outgoing - bookings this user made)
-    const unsubscribeConsumer = subscribeToConsumerBookings(
-      userId,
-      null,
-      (bookingsData) => {
-        const outgoingBookings = bookingsData.map(b => ({ ...b, isIncoming: false }));
-        combinedBookings = combinedBookings.filter(b => b.isIncoming).concat(outgoingBookings);
-        consumerLoaded = true;
-        updateCombined();
-      },
-      (err) => {
-        console.error('Error loading consumer bookings:', err);
-        consumerLoaded = true;
-        updateCombined();
-      }
-    );
-
-    // Subscribe to provider bookings (incoming - bookings from customers)
-    const unsubscribeProvider = subscribeToProviderBookings(
-      userId,
-      null,
-      (bookingsData) => {
-        const incomingBookings = bookingsData.map(b => ({ ...b, isIncoming: true }));
-        combinedBookings = combinedBookings.filter(b => !b.isIncoming).concat(incomingBookings);
-        providerLoaded = true;
-        updateCombined();
-      },
-      (err) => {
-        console.error('Error loading provider bookings:', err);
-        providerLoaded = true;
-        updateCombined();
-      }
-    );
-
-    return () => {
-      unsubscribeConsumer();
-      unsubscribeProvider();
-    };
-  }, [userId]);
-
-  return { allBookings, loading, error };
+  return { allBookings: data ?? [], loading, error };
 };
 
-/**
- * Derives filtered bookings based on active tab
- */
+/* ── Derived state (pure computation — no change needed) ── */
+
 const getStatusFilter = (tab: number): string[] => {
   switch (tab) {
     case 0: return [BookingStatus.PENDING];
@@ -89,45 +58,33 @@ const getStatusFilter = (tab: number): string[] => {
   }
 };
 
-export const useFilteredBookings = (allBookings: (BookingModel & { isIncoming: boolean })[], activeTab: number) => {
-  return useMemo(() => {
-    const statusFilter = getStatusFilter(activeTab);
-    return allBookings.filter(booking => statusFilter.includes(booking.status));
+export const useFilteredBookings = (allBookings: TaggedBooking[], activeTab: number) =>
+  useMemo(() => {
+    const statuses = getStatusFilter(activeTab);
+    return allBookings.filter(b => statuses.includes(b.status));
   }, [allBookings, activeTab]);
-};
 
-/**
- * Derives booking statistics from all bookings
- */
-export const useBookingStats = (allBookings: (BookingModel & { isIncoming: boolean })[]) => {
-  return useMemo(() => {
+export const useBookingStats = (allBookings: TaggedBooking[]) =>
+  useMemo(() => {
     const pending = allBookings.filter(b => b.status === BookingStatus.PENDING).length;
     const upcoming = allBookings.filter(b => b.status === BookingStatus.ACCEPTED).length;
     const completed = allBookings.filter(b => b.status === BookingStatus.COMPLETED).length;
     const history = allBookings.length - pending - upcoming;
-    const total = allBookings.length;
-    return { pending, upcoming, completed, history, total };
+    return { pending, upcoming, completed, history, total: allBookings.length };
   }, [allBookings]);
-};
 
-/**
- * Custom hook for updating booking status
- */
+/* ── Mutation for status update ─────────────────────── */
+
 export const useUpdateBookingStatus = () => {
-  const [isUpdating, setIsUpdating] = useState(false);
+  const mutation = useMutation({
+    mutationFn: ({ bookingId, newStatus }: { bookingId: string; newStatus: string }) =>
+      updateBookingStatus(bookingId, newStatus),
+    onError: () => toast.error('Failed to update booking status'),
+  });
 
-  const update = useCallback(async (bookingId: string, newStatus: string) => {
-    setIsUpdating(true);
-    try {
-      await updateBookingStatus(bookingId, newStatus);
-    } catch (error) {
-      console.error('Error updating booking status:', error);
-      alert('Failed to update booking status');
-      throw error;
-    } finally {
-      setIsUpdating(false);
-    }
-  }, []);
-
-  return { updateStatus: update, isUpdating };
+  return {
+    updateStatus: (bookingId: string, newStatus: string) =>
+      mutation.mutateAsync({ bookingId, newStatus }),
+    isUpdating: mutation.isPending,
+  };
 };

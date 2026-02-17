@@ -1,17 +1,8 @@
-import {
-  Container,
-  Typography,
-  Box,
-  Card,
-  CardContent,
-  Grid,
-  Alert,
-  CircularProgress,
-} from '@mui/material';
-import { useProfile } from './loader';
-import ProfileAvatar from '../../components/profile/ProfileAvatar';
+import {Container,Typography,Box,Card,CardContent,Grid,Alert,CircularProgress,} from '@mui/material';
 import ProfileFormFields from '../../components/profile/ProfileFormFields';
 import ProfileActions from '../../components/profile/ProfileActions';
+import ProfileAvatar from '../../components/profile/ProfileAvatar';
+import { useProfile } from './loader';
 
 export default function ProfilePage() {
   const {
